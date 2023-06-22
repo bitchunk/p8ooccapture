@@ -1,7 +1,7 @@
 pico-8 cartridge // http://www.pico-8.com
 version 41
 __lua__
---p8ooccapture v0.2.0
+--p8ooccapture v0.3.0
 --@shiftalow
 --knutil_0.4
 --@shiftalow
@@ -344,6 +344,18 @@ end
 
 function _draw()
 	cls()
+	if not compressivefonts then
+		poke(0x5f55,0x0)
+		cls()
+		printchars()
+		poke(0x5f55,0x60)
+
+		compressivefonts={}
+		local p
+		p,compressivefonts=matrixscan(0,0,128,128)
+		compressivefonts['◝◝◝◝◝◝◝◝']=[[\^i \^-i]]
+		reload(0,0,0x2000)
+	end
 	poke(0x5f2d,5)
 	_mx,_my=mid(_mx,-8,135),mid(_my,-8,135)
 	_mmx,_mmy=flr(_mx),flr(_my)
@@ -546,7 +558,7 @@ end
 function matrixscan(x,y,w,h,g)
 	local r={x,y,w,h}
 	local rc=cat({0,0,toc(w),toc(h)})
-
+	local cmp,cstack,kstack={},{},{}
 --dmp(r)
 	pal()
 	local p={}
@@ -556,11 +568,11 @@ function matrixscan(x,y,w,h,g)
 		end)
 	end)
 	--p={1,2,nil,nil,5,...}
-
+--dmp(p)
 	local str={}
 	tmap(p,function(c,i)
 		local cs={}
-		add(cs,not g and [[\f]]..tohex(c) or '')
+--		add(cs,not g and [[\f]]..tohex(c) or '')
 		--rc={0,0,1,1}
 		rceach(rc,function(xc,yc,rc)
 			local s=''
@@ -580,18 +592,72 @@ function matrixscan(x,y,w,h,g)
 				return controlcodes[v+1] or replace(chr(v),[[']],[[\']],[["]],[[\"]])
 			end)
 			--s={"\0","\0",...}
---			dmp({xc,rc.ex})
+--			dmp(s)
+--			local rept={
+--				[[\00]],[[\048]]
+--				,[[\01]],[[\049]]
+--				,[[\02]],[[\050]]
+--				,[[\03]],[[\051]]
+--				,[[\04]],[[\052]]
+--				,[[\05]],[[\053]]
+--				,[[\06]],[[\054]]
+--				,[[\07]],[[\055]]
+--				,[[\08]],[[\056]]
+--				,[[\09]],[[\057]]
+--			}
+			s=tmap(s,function(v,i)
+--			if numreplace[(s[i-1] or '')..v] then
+--				stop(v)
+--			end
+				return numreplace[(s[i-1] or '')..v] or v
+			end)
 			local js=join('',unpack(s))
---			add(cs,[[\^.]]..js..(xc==rc.ex and [[\n]] or ''))
-			add(cs,(js==[[\0\0\0\0\0\0\0\0]] and ' ' or [[\^.]]..js)..(xc==rc.ex and [[\n]] or ''))
+			
+--			dmp(s)
+			add(cstack,js)
+--			cstack[js]=cstack[js] and cstack[js]+1 or 1
+
+			add(cs,(compressivefonts[js] or [[\^.]]..js)..(xc==rc.ex and [[\n]] or ''))
 		end)
 --		tmap(cs,function(v) print(v) end)
 --dmp()
+		add(cs,not g and [[\f]]..tohex(c) or '',1)
 		add(str,join("",unpack(cs)))
 	end)
+--	dmp(#cstack)
+
 --dmp(str)
---stop()
-	return [[\^x8\^y8]]..join([[\^g]],unpack(str))
+	--** make to compressive fonts indexes
+	tmap(cstack,function(v)
+		if count(kstack,v)==0 then
+			add(kstack,v)
+		end
+	end)
+--dmp(#kstack)
+	local c,i,v=1
+	while #kstack>240 do
+		i,v=inext(kstack,i)
+		if count(cstack,v)<=c then
+			deli(cstack,i)
+--			kstack[i]=nil
+--			d+=1
+			if i then
+				i-=1
+			end
+		end
+		if i==nil then
+			c+=1
+		end
+	end
+--dmp(kstack)
+	tmap(kstack,function(v,i)
+			cmp[v]=chr(i+15)
+	end)
+	
+--	local p=[[\000\000\000\000\000\000\000\000]]
+--	dmp(cmp)
+
+	return [[\^x8\^y8\^-b]]..join([[\^g]],unpack(str)),cmp
 end
 
 --for scroll
@@ -622,10 +688,32 @@ end
 
 cat(_ENV,htbl[[
 controlcodes{
-\000 \* \# \- \| \+ \^ \a
+\0 \* \# \- \| \+ \^ \a
  \b \t \n \v \f \r \014 \015
 }
-]])
+numreplace{
+\00=\048;
+\01=\049;
+\02=\050;
+\03=\051;
+\04=\052;
+\05=\053;
+\06=\054;
+\07=\055;
+\08=\056;
+\09=\057;
+}
+]]
+)
+--compressivefonts=
+--comb({
+--		[[\000\000\000\000\000\000\000\000]]
+--	},{
+--		' '
+--})
+--dmp(compressivefonts)
+--dmp(comb(split('0 4',' ',false),{' ','1'}))
+--dmp(cat(htbl[[]],comb(split('0 4',' ',false),{' ','1'})))
 -->8
 function dropfileds()
 	local s=''
@@ -663,6 +751,17 @@ function dropfileds()
 		,esfn=typingescfn
 		}))
 	end
+end
+
+function printchars(a)
+	if a then
+	poke(0x5f58,0x81)
+	end
+	for i=16,255 do
+		print(chr(i),i%16*8,toc(i,16)*8-8,6)
+	end
+--	stop()
+	poke(0x5f58,0)
 end
 -->8
 -- control method
@@ -703,7 +802,13 @@ enter
 -->8
 --[[
 release note
-**v0.2**
+**v0.3.0**
+- add: support for single-character expressions by matching against default font patterns.
+- fix: substitution to split character codes 0~15 and numeric characters.
+- add: the most frequent patterns are selected as shortened characters. (default font supported)
+- add: instruction to turn off border background.
+
+**v0.2.0**
 - add: supports grid movement.
 - add: sprite capture size change.
 - add: captures of multiple sprites at once.
@@ -712,7 +817,7 @@ release note
 - fix: conversion method of control codes "\0 \14 \15".
 - fix: add double quotation marks to the capture code
 
-**v0.1**
+**v0.1.0**
 - first release.
 ]]--
 
@@ -1036,7 +1141,7 @@ __sfx__
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000400002455024550245502455024550245500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000400002455024550245502455024550245500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000400002455024550245502455024550245502455000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 000400002455024550245502455024550245502455000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
