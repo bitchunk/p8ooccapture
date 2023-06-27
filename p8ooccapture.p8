@@ -1,7 +1,7 @@
 pico-8 cartridge // http://www.pico-8.com
 version 41
 __lua__
---p8ooccapture v0.3.0
+--p8ooccapture v0.4.0
 --@shiftalow
 --knutil_0.4
 --@shiftalow
@@ -302,9 +302,10 @@ function _init()
 sx,sy=0,0
 scale=2
 mest,cmest=0,0
-cwidth=1
-cheight=1
+cwidth,cheight=1,1
+mwidth,mheight=1,1
 mpx,mpy=0,0
+scr=exrect'0 0 128 128'
 menuitem(1,'copy code',function(v)
 printh(join('',[[_oocspr={
 "paste ooc strings"
@@ -343,21 +344,26 @@ lp,rp,up,dp,zp,xp,ep=unpack(btp,0)
 end
 
 function _draw()
-	cls()
+--	cls()
+	fillp(0x5a5a)
+	scr.rf(1)
 	if not compressivefonts then
+		?'initialize compressor...',0,0,6
+		flip()
 		poke(0x5f55,0x0)
 		cls()
 		printchars()
 		poke(0x5f55,0x60)
-
 		compressivefonts={}
 		local p
 		p,compressivefonts=matrixscan(0,0,128,128)
-		compressivefonts['◝◝◝◝◝◝◝◝']=[[\^i \^-i]]
+--		compressivefonts['◝◝◝◝◝◝◝◝']=[[\^i \^-i]]
 		reload(0,0,0x2000)
 	end
+
 	poke(0x5f2d,5)
-	_mx,_my=mid(_mx,-8,135),mid(_my,-8,135)
+--	_mx,_my=mid(_mx,-8,135),mid(_my,-8,135)
+	_mx,_my=mid(_mx,-32,160),mid(_my,-32,160)
 	_mmx,_mmy=flr(_mx),flr(_my)
 	if _mlt or _mrt or btrg[' '] then
 		px,py=trunc(grid(sx)),trunc(grid(sy))
@@ -370,24 +376,36 @@ function _draw()
 		if btns.ctr then
 			mpx=mid(mpx+stat(38)/6,0,128)
 			mpy=mid(mpy+stat(39)/6,0,128)
+			mwidth=toc(mpx+cwidth*8,cwidth*8)
+			mheight=toc(mpy+cheight*8,cheight*8)
+--			dbg(mpx,cwidth*8,mwidth)
 		else
 			cpx=mid(cpx+stat(38)/6,0,128)
 			cpy=mid(cpy+stat(39)/6,0,128)
-			cwidth=mid(toc(cpx),1,17)
-			cheight=mid(toc(cpy),1,17)
+			cwidth=mid(toc(cpx)+1,1,16)
+			cheight=mid(toc(cpy)+1,1,16)
 		end
-			_mmx=_msx
-			_mx=_msx
-			_mmy=_msy
-			_my=_msy
+		_mmx=_msx
+		_mx=_msx
+		_mmy=_msy
+		_my=_msy
 	end
 
 	if _mr or btns[' '] then
-		sx,sy=px+grid(_msx)-trunc(grid(_mmx)),py+grid(_msy)-trunc(grid(_mmy))
+		sx,sy=
+		px+trunc(grid(_msx))-trunc(grid(_mmx))
+		,py+trunc(grid(_msy))-trunc(grid(_mmy))
+		sx,sy=amid(sx,96),amid(sy,96)
 	end
+	
 	if mo.lut or mo.rut or butrg[' '] then
-			sx,sy=trunc(sx),trunc(sy)
+--		sx,sy=trunc(sx),trunc(sy)
+--		_msx,_mmx=
+--		trunc(sx-px+_mmx)
+--		,trunc(sx-px+_msx)
+--		,sy-py
 	end
+	
 	if butrg.ctr then
 		_mx=trunc(sgrid(_mmx,sx,1))
 		_my=trunc(sgrid(_mmy,sy,1))
@@ -400,13 +418,17 @@ function _draw()
 		,flr((sy+_mmy)/pscale)*scale-_mmy
 	end
 
+	camera(sx,sy)
+	scr.ud(nil,nil,128*scale,128*scale).rf(0)
+	camera()
+
 	sspr(sx/scale,sy/scale,128,128,0,0,128*scale,128*scale)
 	local scc=8*scale
 	local fls=time()%0.4<0.2
 	local rc=exrect'0 0 0 0'.ud(trunc(sgrid(_mmx,sx)),trunc(sgrid(_mmy,sy)),cwidth*8*scale,cheight*8*scale)
 	local cr=exrect'0 0 0 0'
 	fillp(0xcc33.8)
-	rceach(mpx and {0,0,toc(mpx,cwidth*8),toc(mpy,cheight*8)} or '0 0 0 0',function(x,y,r)
+	rceach(mpx and {0,0,mwidth,mheight} or '0 0 0 0',function(x,y,r)
 		if (x+y-toc(time(),0.06))%16<12 then
 			cr.ud(
 				rc.x+x*cwidth*scale*8
@@ -416,9 +438,10 @@ function _draw()
 		end
 	end)
 	fillp()
-	rc.rs(fls and 8 or 7)
+--	rc.rs(fls and 8 or 7)
 
-	local r=exrect'0 0 0 0'.ud('0 112 128 16').rf(0).rs(1)
+--	local r=exrect'0 0 0 0'.ud('0 112 128 16').rf(0).rs(1)
+	local r=exrect'0 0 0 0'.ud('0 112 128 16')
 
 	local s={}
 	for y=0,7 do
@@ -440,7 +463,7 @@ function _draw()
 --	if _key=='る' then
 	if btns.ctr and btrg.c then
 		escs={}
-		local sr=exrect({0,0,toc(mpx,cwidth*8),toc(mpy,cheight*8)})
+		local sr=exrect({0,0,mwidth,mheight})
 		rceach(sr.w*sr.h>0 and sr.p or '0 0 1 1',function(x,y,r)
 			add(escs,[["]]..matrixscan(
 				x*cwidth*8+divide(trunc(sx)+sgrid(_mmx,sx))
@@ -457,29 +480,42 @@ function _draw()
 		mest=60
 	end
 
-	if mest>0 then
-	cr.ud('12 97 116 15').rf(fc).rs(sc)
-	?join('',"*copied* please paste with\n          [PUNY FONT MODE]"),cr.x+2,cr.y+2,7
-	mest-=1
-	elseif cmest>0 then
-	cr.ud('12 97 116 15').rf(fc).rs(sc)
-	?join('',"*copied the drawing code*"),cr.x+2,cr.y+2,7
-	cmest-=1
+	rc.rs(fls and 8 or 7)
+	if not _ml then
+		r.rf(0).rs(1)
+		if mest>0 then
+		cr.ud('12 97 116 15').rf(fc).rs(sc)
+		?join('',"*copied* please paste with\n          [PUNY FONT MODE]"),cr.x+2,cr.y+2,7
+		mest-=1
+		elseif cmest>0 then
+		cr.ud('12 97 116 15').rf(fc).rs(sc)
+		?join('',"*copied the drawing code*"),cr.x+2,cr.y+2,7
+		cmest-=1
+		else
+		cr.ud('72 97 56 15').rf(fc).rs(sc)
+		?join('','scr:X',pad0(sx),' Y',pad0(sy)),cr.ex-52,cr.y+2,6
+		print(join(''
+			,'pos:X'
+			..pad0(toc(rc.x+sx,scale))
+			..' Y'
+			..pad0(rc.y+toc(sy,scale))
+		),cr.ex-52,cr.y+8,6)
+		end
+		s=join('',unpack(s))
+		?join('','esc:',escs),r.x+2,r.y+2
+		?join('','raw:',s),r.x+2,r.y+8
+		cr.ud('0 100 12 12').rf(fc).rs(sc)
+		?join('',"\^.",s),cr.x+2,cr.y+2,7
 	else
-	cr.ud('72 97 56 15').rf(fc).rs(sc)
-	?join('','scr:X',pad0(sx),' Y',pad0(sy)),cr.ex-52,cr.y+2,6
-	print(join(''
-		,'pos:X'
-		..pad0(toc(rc.x+sx,scale))
-		..' Y'
-		..pad0(rc.y+toc(sy,scale))
-	),cr.ex-52,cr.y+8,6)
+		if btns.ctr then
+			?'○',rc.x+mpx*scale-1,rc.y+mpy*scale-2,fls and 9 or 7
+		else
+			?'○',rc.x+cpx*scale-1,rc.y+(cpy)*scale-2,fls and 8 or 7
+--			?'○',(cpx-1/scale)*scale-sx,(cpy-2/scale)*scale-sy,fls and 8 or 7
+		end
+	
+		oprint(join('','X',pad0(cwidth),'Y',pad0(cheight)),mid(rc.x,1,96),mid(rc.y-8,1,120),fls and 8 or 8,fls and 7 or 7)
 	end
-	s=join('',unpack(s))
-	?join('','esc:',escs),r.x+2,r.y+2
-	?join('','raw:',s),r.x+2,r.y+8
-	cr.ud('0 100 12 12').rf(fc).rs(sc)
-	?join('',"\^.",s),cr.x+2,cr.y+2,7
 	dbg()
 end
 
@@ -553,12 +589,13 @@ function setmessage(t)
 cmdscenes([[
 ms st message ]]..#t*9,htbl(t))
 end
-	
+
 -->8
 function matrixscan(x,y,w,h,g)
 	local r={x,y,w,h}
 	local rc=cat({0,0,toc(w),toc(h)})
 	local cmp,cstack,kstack={},{},{}
+--	local sbs={}
 --dmp(r)
 	pal()
 	local p={}
@@ -571,14 +608,14 @@ function matrixscan(x,y,w,h,g)
 --dmp(p)
 	local str={}
 	tmap(p,function(c,i)
-		local cs={}
---		add(cs,not g and [[\f]]..tohex(c) or '')
+--	dmp(c)
+		local cs,cmcnt,zcnt={},{},0
 		--rc={0,0,1,1}
 		rceach(rc,function(xc,yc,rc)
+		local sb=''
 			local s=''
 --			dmp(x+7-(x-xc*8))
 			rceach({x,y,8,8},function(px,py,r)
---			rceach({xc*8+x,yc*8+y,8,8},function(px,py,r)
 				s..=tonum(sget(x+xc*8+r.ex-px,yc*8+py)==c)
 --				s..=tonum(sget(x+r.ex-px,py)==c)
 			end)
@@ -588,77 +625,134 @@ function matrixscan(x,y,w,h,g)
 			end)
 --			dmp(s)
 			--s={255,255,255,...}
+			local vcnt=0
 			s=tmap(s,function(v)
-				return controlcodes[v+1] or replace(chr(v),[[']],[[\']],[["]],[[\"]])
+				sb=sb..chr(v)
+				vcnt+=v
+				return controlcodes[v+1] or replace(chr(v),[[\]],[[\\]],[[']],[[\']],[["]],[[\"]])
 			end)
+			--zero count, reset if non-zero
+			zcnt=vcnt~=0 and 0 or zcnt+1
 			--s={"\0","\0",...}
 --			dmp(s)
---			local rept={
---				[[\00]],[[\048]]
---				,[[\01]],[[\049]]
---				,[[\02]],[[\050]]
---				,[[\03]],[[\051]]
---				,[[\04]],[[\052]]
---				,[[\05]],[[\053]]
---				,[[\06]],[[\054]]
---				,[[\07]],[[\055]]
---				,[[\08]],[[\056]]
---				,[[\09]],[[\057]]
---			}
 			s=tmap(s,function(v,i)
---			if numreplace[(s[i-1] or '')..v] then
---				stop(v)
---			end
 				return numreplace[(s[i-1] or '')..v] or v
 			end)
 			local js=join('',unpack(s))
 			
---			dmp(s)
 			add(cstack,js)
---			cstack[js]=cstack[js] and cstack[js]+1 or 1
 
-			add(cs,(compressivefonts[js] or [[\^.]]..js)..(xc==rc.ex and [[\n]] or ''))
+			local cm=compressivefonts[js] or [[\^.]]..js
+			add(cmcnt,cm)
+			local ise,c1=xc==rc.ex,cmcnt[1]
+			local c1nmch=c1~=cm
+			if ise or cmcnt[2] and c1nmch then
+				local c1cnt=count(cmcnt,c1)
+				cm=c1cnt
+					>(#c1>4 and 1 or 3) --"o-o-char" or "direct char"
+					 and {[[\*]]..tohex(#cmcnt-1)..cmcnt[1]}
+					 or {unpack(cmcnt,1,#cmcnt-1)}
+--					 or {unpack(cmcnt,1,max(1,#cmcnt-1))}
+				cat(cs,cm)
+				if ise then
+--					dmp({cs,#cmcnt,cmcnt[#cmcnt]})
+					add(cs,cmcnt[#cmcnt])
+					for i=1,c1cnt>3 and tonum(zcnt>0)*2-tonum(c1nmch) or zcnt do
+--					for i=1,zcnt-(c1cnt>3 and c1cnt or 0) do
+--						dmp({cs,zcnt,i,c1cnt,#cmcnt})
+						deli(cs)
+					end
+					add(cs,[[\n]])
+					cmcnt={}
+					zcnt=0
+				else
+					cmcnt={cmcnt[#cmcnt]}
+				end
+--					 	ise and [[\n]] or ''
+			end
 		end)
 --		tmap(cs,function(v) print(v) end)
---dmp()
+--dmp(cs)
 		add(cs,not g and [[\f]]..tohex(c) or '',1)
-		add(str,join("",unpack(cs)))
+		cs=join("",unpack(cs))
+		add(str,cs)
+--		add(str,join("",unpack(cs)))
 	end)
+	
 --	dmp(#cstack)
 
 --dmp(str)
 	--** make to compressive fonts indexes
-	tmap(cstack,function(v)
+	tmap(cstack,function(v,i)
 		if count(kstack,v)==0 then
-			add(kstack,v)
+			kstack[i]=v
+--			add(kstack,v,i)
+--			add(kstack,v,i)
 		end
 	end)
---dmp(#kstack)
+--dmp(kstack)
 	local c,i,v=1
 	while #kstack>240 do
-		i,v=inext(kstack,i)
+		i,v=next(kstack,i)
 		if count(cstack,v)<=c then
-			deli(cstack,i)
---			kstack[i]=nil
---			d+=1
+--dmp(#kstack)
+			deli(kstack,i)
 			if i then
 				i-=1
 			end
+--			dmp({#kstack,#cstack,i,v,c})
 		end
 		if i==nil then
 			c+=1
 		end
 	end
---dmp(kstack)
+--dmp(#kstack)
+--	cls()
 	tmap(kstack,function(v,i)
-			cmp[v]=chr(i+15)
+		cmp[v]=chr(i+15)
+--		dmp(v)
+--		?"\^."..v,(i%16)*8,toc(i,16)*8
+--			dmp({i+15,v,chr(i+15),"\^."..sbs[i]})
 	end)
+--	flip()
+--	stop()
 	
 --	local p=[[\000\000\000\000\000\000\000\000]]
 --	dmp(cmp)
 
-	return [[\^x8\^y8\^-b]]..join([[\^g]],unpack(str)),cmp
+	return [[\^x8\^y8]]..join([[\^g]],unpack(str)),cmp
 end
+
+cat(_ENV,htbl[[
+controlcodes{
+\0 \* \# \- \| \+ \^ \a
+ \b \t \n \v \f \r \014 \015
+}
+numreplace{
+\00=\048;
+\01=\049;
+\02=\050;
+\03=\051;
+\04=\052;
+\05=\053;
+\06=\054;
+\07=\055;
+\08=\056;
+\09=\057;
+}
+]]
+)
+
+--compressivefonts=
+--comb({
+--		[[\000\000\000\000\000\000\000\000]]
+--	},{
+--		' '
+--})
+--dmp(compressivefonts)
+--dmp(comb(split('0 4',' ',false),{' ','1'}))
+--dmp(cat(htbl[[]],comb(split('0 4',' ',false),{' ','1'})))
+-->8
 
 --for scroll
 function grid(g)
@@ -683,38 +777,10 @@ return flr((d)/(s or scale))
 end
 
 function pad0(s,n)
-return sub('  '..s,n or -3)
+return (s>=0 and '' or '-')..sub(('00')..abs(s),(n or -3)+(s>=0 and 0 or 1))
+--return sub('  '..s,n or -3)
 end
 
-cat(_ENV,htbl[[
-controlcodes{
-\0 \* \# \- \| \+ \^ \a
- \b \t \n \v \f \r \014 \015
-}
-numreplace{
-\00=\048;
-\01=\049;
-\02=\050;
-\03=\051;
-\04=\052;
-\05=\053;
-\06=\054;
-\07=\055;
-\08=\056;
-\09=\057;
-}
-]]
-)
---compressivefonts=
---comb({
---		[[\000\000\000\000\000\000\000\000]]
---	},{
---		' '
---})
---dmp(compressivefonts)
---dmp(comb(split('0 4',' ',false),{' ','1'}))
---dmp(cat(htbl[[]],comb(split('0 4',' ',false),{' ','1'})))
--->8
 function dropfileds()
 	local s=''
 	while stat(121) do
@@ -763,6 +829,7 @@ function printchars(a)
 --	stop()
 	poke(0x5f58,0)
 end
+
 -->8
 -- control method
 --[[
@@ -802,6 +869,18 @@ enter
 -->8
 --[[
 release note
+**v0.4.0**
+- add: support for repeating instructions ("\*x") for duplicate patterns.
+- add: delete whitespace before line break.
+- add: [ui]color-coded sprite sheet range.
+- add: [ui]compressor initialization with message.
+- add: [ui]displays a guide cursor for range selection and multiple selections.
+- add: [ui]adjust the scroll range of the sprite sheet.
+- fix: [ui]adjustment of range and multiple selections.
+- fix: [ui]hide ui during selection operation.
+- fix: changed position display to 0-padding.
+- del: eliminated compression of inverted fills.
+
 **v0.3.0**
 - add: support for single-character expressions by matching against default font patterns.
 - fix: substitution to split character codes 0~15 and numeric characters.
@@ -1141,7 +1220,7 @@ __sfx__
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000400002455024550245502455024550245500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000400002455024550245502455024550245500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000400002455024550245502455024550245502455000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+001000002e05000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+001000002e05000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+001000002e05000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 000400002455024550245502455024550245502455000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
